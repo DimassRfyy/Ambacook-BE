@@ -9,6 +9,7 @@ use App\Models\Ingredient;
 use App\Models\Recipe;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Components\Wizard;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
@@ -20,12 +21,21 @@ class RecipeResource extends Resource
 {
     protected static ?string $model = Recipe::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'Resources';
+
+    protected static ?string $navigationIcon = 'heroicon-o-newspaper';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
+                Wizard::make([
+                    Wizard\Step::make('Main Information')
+                        ->icon('heroicon-m-information-circle')
+                        ->completedIcon('heroicon-m-check')
+                        ->description('Add information of your recipe.')
+                        ->columns(2)
+                        ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
@@ -38,23 +48,7 @@ class RecipeResource extends Resource
                     ->required()
                     ->rows(10)
                     ->cols(20),
-                Forms\Components\Repeater::make('recipeIngredients')
-                    ->relationship()
-                    ->schema([
-                        Forms\Components\Select::make('ingredient_id')
-                            ->relationship('ingredient', 'name')
-                            ->required(),
-                    ]),
-                Forms\Components\Repeater::make('photos')
-                    ->relationship('photos')
-                    ->schema([
-                        Forms\Components\FileUpload::make('photo')
-                            ->image()
-                            ->directory('recipes/photos')
-                            ->disk('public')
-                            ->required(),
-                    ]),
-                Forms\Components\Select::make('recipe_author_id')
+                    Forms\Components\Select::make('recipe_author_id')
                     ->relationship('author', 'name')
                     ->searchable()
                     ->preload()
@@ -65,13 +59,52 @@ class RecipeResource extends Resource
                     ->preload()
                     ->required(),
                 Forms\Components\TextInput::make('url_video')
+                    ->helperText('Gunakan kode video dari YouTube.')
                     ->required()
                     ->maxLength(255),
                 Forms\Components\FileUpload::make('url_file')
                     ->downloadable()
+                    ->helperText('Upload resep dalam format PDF.')
                     ->uploadingMessage('Uploading recipes...')
                     ->acceptedFileTypes(['application/pdf'])
                     ->required(),
+                        ]),
+                    Wizard\Step::make('Ingredients')
+                        ->icon('heroicon-m-arrow-trending-up')
+                        ->completedIcon('heroicon-m-check')
+                        ->description('Add ingredients to your recipe.')
+                        ->schema([
+                Forms\Components\Repeater::make('recipeIngredients')
+                    ->relationship()
+                    ->grid(2)
+                    ->defaultItems(4)
+                    ->schema([
+                Forms\Components\Select::make('ingredient_id')
+                            ->relationship('ingredient', 'name')
+                            ->required(),
+                            ]),
+                        ]),
+                    Wizard\Step::make('Photos')
+                        ->icon('heroicon-m-photo')
+                        ->completedIcon('heroicon-m-check')
+                        ->description('Upload photos of your recipe.')
+                        ->schema([
+                Forms\Components\Repeater::make('photos')
+                    ->relationship('photos')
+                    ->grid(2)
+                    ->defaultItems(3)
+                    ->schema([
+                Forms\Components\FileUpload::make('photo')
+                            ->image()
+                            ->directory('recipes/photos')
+                            ->disk('public')
+                            ->required(),
+                        ]),
+                    ]),
+                ])
+                ->columnSpan('full')
+                    ->skippable()
+                    ->columns(1),
             ]);
     }
 
@@ -108,7 +141,9 @@ class RecipeResource extends Resource
                     ->relationship('category', 'name')
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
