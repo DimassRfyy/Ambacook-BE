@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Recipe extends Model
@@ -54,5 +55,30 @@ class Recipe extends Model
     public function recipeIngredients(): HasMany
     {
         return $this->hasMany(RecipeIngredient::class);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($recipe) {
+            // Hapus file thumbnail dari storage
+            if ($recipe->thumbnail) {
+                Storage::delete($recipe->thumbnail);
+            }
+
+            // Hapus relasi photos dari tabel RecipePhoto
+            $recipe->photos()->each(function ($photo) {
+                Storage::delete($photo->photo);
+                $photo->delete();
+            });
+        });
+
+        static::updating(function ($recipe) {
+            // Hapus file thumbnail lama dari storage jika thumbnail diupdate
+            if ($recipe->isDirty('thumbnail') && $recipe->getOriginal('thumbnail')) {
+                Storage::delete($recipe->getOriginal('thumbnail'));
+            }
+        });
     }
 }
